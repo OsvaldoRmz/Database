@@ -1,0 +1,73 @@
+<?php
+// db_insert.php — accepts GET (and POST) to insert sensor data safely
+
+header('Content-Type: application/json; charset=utf-8');
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+date_default_timezone_set('America/Los_Angeles');
+
+// ------------ DB CONFIG
+const DB_HOST = 'mysql.hostinger.com';   // or 'localhost'
+const DB_USER = 'u926109375_db_OsvaldoRmz';
+const DB_PASS = 'Osvaldo10010028';
+const DB_NAME = 'u926109375_Osvaldoramirez';
+
+const TEMP_MIN = -10.0;
+const TEMP_MAX = 100.0;
+const HUM_MIN  = 0.0;
+const HUM_MAX  = 100.0;
+
+// Connect
+try {
+  $pdo = new PDO("mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4", DB_USER, DB_PASS,
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+} catch (Throwable $e) {
+  echo json_encode(['ok'=>false,'error'=>'DB connect failed','detail'=>$e->getMessage()]);
+  exit;
+}
+// Accept either ?payload=xxx or bare ?xxx form
+$payloadB64 = $_GET['payload'] ?? $_POST['payload'] ?? null;
+if (!$payloadB64) {
+    // if there were no normal params, try to read the raw query string itself
+    $qs = $_SERVER['QUERY_STRING'] ?? '';
+    if ($qs !== '') {
+        $payloadB64 = $qs; // assume the whole query string *is* the base64 text
+    }
+}
+
+/* ---------- 1️⃣ Try Base64 payload first ---------- */
+$payloadB64 = $_GET['payload'] ?? $_POST['payload'] ?? null;
+if ($payloadB64) {
+  $decoded = base64_decode($payloadB64, true);
+  if ($decoded !== false) {
+    // JSON or query-string inside
+    $json = json_decode($decoded, true);
+    if (is_array($json)) $_GET = array_merge($_GET, $json);
+    else parse_str($decoded, $_GET);
+  }
+}
+
+/* ---------- 2️⃣ Now read normal parameters (works for both) ---------- */
+$node = $_GET['node_name'] ?? $_GET['nodeId'] ?? '';
+$temp = $_GET['temperature'] ?? $_GET['nodeTemp'] ?? '';
+$hum  = $_GET['humidity'] ?? $_GET['nodeHum'] ?? '';
+$time = $_GET['time_received'] ?? $_GET['timeReceived'] ?? '';
+
+if ($node==='' || $temp==='') {
+  echo json_encode(['ok'=>false,'error'=>'Missing node_name or temperature']); exit;
+}
+
+/* ---------- Insert same as before ---------- */
+$time = $time ?: date('Y-m-d H:i:s');
+
+$stmt = $pdo->prepare("
+  INSERT INTO sensor_data (node_name, time_received, temperature, humidity)
+  VALUES (?, ?, ?, ?)
+");
+try {
+  $stmt->execute([$node, $time, $temp, $hum]);
+  echo json_encode(['ok'=>true,'message'=>'Row inserted',
+    'inserted'=>['node_name'=>$node,'time_received'=>$time,'temperature'=>$temp,'humidity'=>$hum]]);
+} catch (Throwable $e) {
+  echo json_encode(['ok'=>false,'error'=>'Insert failed','detail'=>$e->getMessage()]);
+}
