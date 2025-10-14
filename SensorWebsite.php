@@ -5,9 +5,9 @@ error_reporting(E_ALL);
 
 // TODO: fill these with your real values
 const DB_HOST = 'mysql.hostinger.com';   // or 'localhost'
-const DB_USER = 'u926109375_db_OsvaldoRmz';
-const DB_PASS = 'Osvaldo10010028';
-const DB_NAME = 'u926109375_Osvaldoramirez';
+const DB_USER = '';
+const DB_PASS = '';
+const DB_NAME = '';
 
 // node to summarize/plot (allow override via URL: ?node=node_2)
 $chosenNode = isset($_GET['node']) ? $_GET['node'] : 'node_1';
